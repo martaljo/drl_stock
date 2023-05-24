@@ -11,7 +11,7 @@ class QLearningAgent:
         self.exploration_rate = exploration_rate
         self.exploration_decay_rate = exploration_decay_rate
         self.q_table = {}
-        
+
     def get_action(self, state):
         if np.random.rand() < self.exploration_rate:
             return randint(0, self.action_size - 1)
@@ -32,27 +32,41 @@ class QLearningAgent:
     def decay_exploration_rate(self):
         self.exploration_rate = self.exploration_rate * (1 - self.exploration_decay_rate)
 
-
 class TradingEnvironment:
     def __init__(self, data):
         self.data = data.values
         self.total_steps = len(data)
         self.current_step = 0
+        self.inventory = 0  # Track of agent's holdings
+        self.capital = 1000  # Initial capital, adjust to your preference
+        self.buy_price = 0
 
     def reset(self):
         self.current_step = 0
+        self.inventory = 0
+        self.capital = 1000
+        self.buy_price = 0
         return self.get_state()
 
     def get_state(self):
         return tuple(self.data[self.current_step])
 
     def take_action(self, action, current_price, next_price):
-        if action == 0: 
-            return next_price - current_price
-        elif action == 1:
-            return current_price - next_price
-        else:
-            return 0
+        reward = 0
+        if action == 0:  # Buy
+            if self.capital > current_price:
+                self.inventory += 1
+                self.capital -= current_price
+                self.buy_price = current_price
+        elif action == 1:  # Sell
+            if self.inventory > 0:
+                reward = (next_price - self.buy_price) * self.inventory
+                self.capital += self.inventory * next_price
+                self.inventory = 0
+        else:  # Hold
+            if self.inventory > 0:
+                reward = (next_price - self.buy_price) * self.inventory
+        return reward
 
     def step(self, action):
         current_price = self.data[self.current_step][1]
@@ -67,7 +81,8 @@ class TradingEnvironment:
             next_state = self.get_state()
         return next_state, reward, done
 
-csv_file = 'drl_stock/data/AAPL.csv'
+
+csv_file = 'data/AAPL.csv'
 data = pd.read_csv(csv_file)
 data['Close/Last'] = data['Close/Last'].str.replace('$', '').astype(float)
 data = data.iloc[:, 1:]  # Excluding Date
@@ -100,6 +115,7 @@ for episode in range(total_episodes):
 
     if episode % 100 == 0:
         print(f"Episode: {episode}, Total Reward: {total_reward}, Exploration Rate: {agent.exploration_rate}")
+    print(action)
 
 plt.plot(total_rewards)
 plt.xlabel('Episode')
