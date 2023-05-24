@@ -10,7 +10,8 @@ class QLearningAgent:
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
         self.exploration_decay_rate = exploration_decay_rate
-        self.q_table =
+        self.q_table = {}
+        
     def get_action(self, state):
         if np.random.rand() < self.exploration_rate:
             return randint(0, self.action_size - 1)
