@@ -3,6 +3,9 @@ import pandas as pd
 from random import randint
 import matplotlib.pyplot as plt
 
+BUY = 0
+SELL = 1
+
 class QLearningAgent:
     def __init__(self, action_size, learning_rate=0.1, discount_factor=0.9, exploration_rate=1.0, exploration_decay_rate=0.001):
         self.action_size = action_size
@@ -33,50 +36,56 @@ class QLearningAgent:
         self.exploration_rate = self.exploration_rate * (1 - self.exploration_decay_rate)
 
 class TradingEnvironment:
+
     def __init__(self, data):
         self.data = data.values
         self.total_steps = len(data)
         self.current_step = 0
-        self.inventory = 0  # Track of agent's holdings
-        self.capital = 1000  # Initial capital, adjust to your preference
+        # self.inventory = 0 # Track of agent's holdings
+        self.inventory = {"AAPL": (0, 0.0)}
+        self.capital = 10000  # Initial capital, adjust to your preference
         self.buy_price = 0
 
     def reset(self):
         self.current_step = 0
-        self.inventory = 0
-        self.capital = 1000
+        # self.inventory = 0
+        self.inventory = {"AAPL": (0, 0.0)}
+        self.capital = 10000
         self.buy_price = 0
         return self.get_state()
 
     def get_state(self):
         return tuple(self.data[self.current_step])
+        # return (self.capital, self.inventory)
 
     def take_action(self, action, current_price, next_price):
         reward = 0
-        if action == 0:  # Buy
+        if action == BUY:  # Buy
             if self.capital > current_price:
-                self.inventory += 1
+                # self.inventory += 1
                 self.capital -= current_price
-                self.buy_price = current_price
-        elif action == 1:  # Sell
-            if self.inventory > 0:
-                reward = (next_price - self.buy_price) * self.inventory
-                self.capital += self.inventory * next_price
-                self.inventory = 0
+                current = self.inventory["AAPL"]
+                self.inventory["AAPL"] = (current[0] + 1, (current[1] * current[0] + current_price)/(current[0] +1))
+        elif action == SELL:  # Sell
+            if self.inventory["AAPL"][0] > 0:
+                reward = (next_price - self.inventory["AAPL"][1]) * self.inventory["AAPL"][0]
+                self.capital += self.inventory["AAPL"][0] * next_price
+                self.inventory["AAPL"] = (0, 0.0)
+                # self.inventory = 0
         else:  # Hold
-            if self.inventory > 0:
-                reward = (next_price - self.buy_price) * self.inventory
+            if self.inventory["AAPL"][0] > 0:
+                reward = (next_price - self.inventory["AAPL"][1]) * self.inventory["AAPL"][0]
         return reward
 
     def step(self, action):
-        current_price = self.data[self.current_step][1]
+        current_price = self.data[self.current_step][2]
         self.current_step += 1
         done = self.current_step >= self.total_steps
         if done:
             next_state = tuple(self.data[self.current_step - 1])
             reward = 0
         else:
-            next_price = self.data[self.current_step][1]
+            next_price = self.data[self.current_step][0]
             reward = self.take_action(action, current_price, next_price)
             next_state = self.get_state()
         return next_state, reward, done
@@ -85,6 +94,7 @@ class TradingEnvironment:
 csv_file = 'data/AAPL.csv'
 data = pd.read_csv(csv_file)
 data['Close/Last'] = data['Close/Last'].str.replace('$', '').astype(float)
+data['Open'] = data['Open'].str.replace('$', '').astype(float)
 data = data.iloc[:, 1:]  # Excluding Date
 
 action_size = 3
@@ -115,7 +125,7 @@ for episode in range(total_episodes):
 
     if episode % 100 == 0:
         print(f"Episode: {episode}, Total Reward: {total_reward}, Exploration Rate: {agent.exploration_rate}")
-    print(action)
+    # print(action)
 
 plt.plot(total_rewards)
 plt.xlabel('Episode')
