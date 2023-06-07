@@ -4,7 +4,7 @@ import gym
 import tensorflow as tf
 from keras.models import Model
 from keras.layers import Dense, Input
-from keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam
 from keras import backend as K
 
 class StockTradingEnv(gym.Env):
@@ -21,6 +21,7 @@ class StockTradingEnv(gym.Env):
         self.current_step = 0
         self.account_balance = 100000.0
         self.shares_held = 0
+        self.prev_net_worth = 0.0
         self.net_worth = self.account_balance
         self.done = False
         return self._next_observation()
@@ -43,17 +44,19 @@ class StockTradingEnv(gym.Env):
         return obs
 
     def _take_action(self, action_type, amount):
-        current_price = self.data.iloc[self.current_step]["Close/Last"]
+        current_price = self.data.iloc[self.current_step]["Close/Last"]#.str.replace('$', '').astype(float)
         if action_type == 0:
             shares_to_buy = int(self.account_balance / current_price)
             cost = shares_to_buy * current_price
+
             self.account_balance -= cost
             self.shares_held += shares_to_buy
         else:
-            shares_to_sell = int(self.shares_held * amount)
-            sale = shares_to_sell * current_price
+            #shares_to_sell = int(self.shares_held * amount)
+            sale = amount * current_price
             self.account_balance += sale
-            self.shares_held -= shares_to_sell
+            self.shares_held -= amount
+        self.prev_net_worth = self.net_worth
         self.net_worth = self.account_balance + self.shares_held * current_price
 
 data = pd.read_csv("data/AAPL.csv")
@@ -62,10 +65,12 @@ data.set_index("Date", inplace=True)
 data.drop(["Volume", "Open", "High", "Low"], axis=1, inplace=True)
 
 epsilon = 1e-8
-data = (data - data.mean()) / (data.std() + epsilon)
+data['Close/Last'] = data['Close/Last'].str.replace('$', '').astype(float)
+# data = (data - data.mean()) / (data.std() + epsilon)
+# print(f'JOOOO{data}')
 
 state_dim = len(data.columns)
-action_dim = 2
+action_dim = 3
 clip_ratio = 0.2
 critic_coef = 0.5
 learning_rate = 0.001
@@ -111,8 +116,12 @@ for episode in range(num_episodes):
         while not done:
             states.append(obs)
             obs_tensor = tf.convert_to_tensor(np.expand_dims(obs, axis=0), dtype=tf.float32)
-            action_probs = actor_model.predict(obs_tensor)[0]
-            action = np.random.choice(np.arange(action_dim), p=action_probs)
+
+            action_probs = actor_model.predict(obs_tensor)[0]# tf.nn.softmax(np.nan_to_num(actor_model.predict(obs_tensor)[0]))
+            if np.isnan(action_probs).any():
+                action = (np.random.choice(np.arange(action_dim)), 1)
+            else:
+                action = (np.random.choice(np.arange(action_dim), p=action_probs), 1)
             actions.append(action)
             obs, reward, done, _ = env.step(action)
             rewards.append(reward)
@@ -157,4 +166,5 @@ while not done:
     print(obs_array)
     action_probs = actor_model.predict(obs_array)[0]
     action = np.argmax(action_probs)
+    print(f'action:{action}')
     obs, reward, done, _ = env.step(action)
