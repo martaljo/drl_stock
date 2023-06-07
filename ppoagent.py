@@ -104,6 +104,7 @@ env = StockTradingEnv(data)
 
 num_episodes = 10000
 for episode in range(num_episodes):
+
     obs = env.reset()
     done = False
 
@@ -156,15 +157,25 @@ for episode in range(num_episodes):
             epochs=1,
             verbose=0
         )
+    if episode % 100 == 0:
+        print(episode)
 
 obs = env.reset()
 done = False
+rewards = []
 
 while not done:
-    print(obs)
+ #   print(obs)
     obs_array = np.expand_dims(obs, axis=0).astype(np.float32)
-    print(obs_array)
+  #  print(obs_array)
     action_probs = actor_model.predict(obs_array)[0]
     action = np.argmax(action_probs)
-    print(f'action:{action}')
+  #  print(f'action:{action}')
     obs, reward, done, _ = env.step(action)
+    rewards.append(reward)
+
+plt.plot(rewards)
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+plt.title('Reward per Episode')
+plt.show()
