@@ -74,6 +74,8 @@ action_dim = 3
 clip_ratio = 0.2
 critic_coef = 0.5
 learning_rate = 0.001
+gamma = 0.1
+gae_lambda = 0.5
 
 def build_actor_critic():
     inputs = Input(shape=(3,))
@@ -97,7 +99,7 @@ def ppo_loss(old_policy_probs, advantages, clipped_values):
         return total_loss
     return loss
 
-actor_model.compile(optimizer=Adam(learning_rate=learning_rate), loss=ppo_loss)
+actor_model.compile(optimizer=Adam(learning_rate=learning_rate), loss=ppo_loss(old_policy_probs=None, advantages=None, clipped_values=None))
 critic_model.compile(optimizer=Adam(learning_rate=learning_rate), loss="mean_squared_error")
 
 env = StockTradingEnv(data)
