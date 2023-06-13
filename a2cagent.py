@@ -329,6 +329,8 @@ for episode in range(1000):
         agent.learn(state, action, reward, next_state, discount_factor)
         state = next_state
         total_reward += reward
+        if done:
+            total_reward += env.get_stock_value()
 
     total_rewards.append(total_reward)
 
