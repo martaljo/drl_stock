@@ -336,14 +336,6 @@ for episode in range(1000):
         print(f"Episode: {episode}, Total Reward: {total_reward}")
 
 print(total_rewards)
+print(f"Finished running with {env.capital + env.get_stock_value()}")
 state = env.reset()
 done = False
-
-while not done:
-    action = agent.choose_action(state)
-    state, reward, done = env.step(action)
-    env.render()
-
-
-
-env.close()
