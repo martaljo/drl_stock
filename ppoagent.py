@@ -6,6 +6,7 @@ from keras.models import Model
 from keras.layers import Dense, Input
 from tensorflow.keras.optimizers import Adam
 from keras import backend as K
+from torch.distributions import MultivariateNormal
 
 class StockTradingEnv(gym.Env):
     def __init__(self, data):
@@ -90,7 +91,10 @@ actor_model, critic_model = build_actor_critic()
 
 def ppo_loss(old_policy_probs, advantages, clipped_values):
     def loss(y_true, y_pred):
-        policy_ratio = K.exp(K.log(y_pred + 1e-10) - K.log(y_true + 1e-10))
+        print("JORRRRGEEE:")
+        print(y_true)
+        print(y_pred)
+        policy_ratio = K.exp(K.log(y_pred - tf.cast(y_true, tf.float32)), dtype=tf.float32)
         unclipped_loss = policy_ratio * advantages
         clipped_loss = K.clip(policy_ratio, 1 - clip_ratio, 1 + clip_ratio) * advantages
         actor_loss = -K.mean(K.minimum(unclipped_loss, clipped_loss))
